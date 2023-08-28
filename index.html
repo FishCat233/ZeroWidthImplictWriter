@@ -1,0 +1,160 @@
+<head>
+    <style>
+        /* You can add your custom style here */
+    </style>
+</head>
+
+<body>
+    <!-- Interface for User-->
+    <h1>Zero Width Writer</h1>
+    <p>A tool which can write something implict and based on zero-width space.</p>
+    <ul style="list-style-type: none;">
+        <li>
+            <h2>Source</h2>
+            <h3>Explict</h3>
+            <p>The origin texts which will be explict.</p>
+        </li>
+        <li>
+            <textarea id="explict" cols="100" rows="10" font>Explict texts.</textarea>
+        </li>
+        <li>
+            <h3>Implict</h3>
+        </li>
+        <li>
+            <textarea id="implict" cols="100" rows="10">Implict texts.</textarea>
+        </li>
+        <li>
+            <h2>Encoded</h2>
+        </li>
+        <li>
+            <textarea id="encoded" cols="100" rows="10"></textarea>
+        </li>
+        <h1>Mechanism</h1>
+        <p>You can see the mechanism in this "index.html".</p>
+    </ul>
+</body>
+<script>
+    // debugger;
+    // Scirpt here
+    "use strict"
+    // -----( Interface )-------------------------------------------------------
+
+    document.querySelector("#explict").addEventListener('input', (e)=>{SourceStringChange()});
+    document.querySelector("#implict").addEventListener('input', (e)=>{SourceStringChange()});
+    function SourceStringChange() {
+        try {
+            // console.log("SourceStringChange()");
+            document.querySelector("#encoded").textContent =
+                Encode(document.querySelector("#explict").value,
+                    document.querySelector("#implict").value);
+        } catch (error) {
+
+        }
+    }
+
+    document.querySelector("#encoded").addEventListener('input', (e)=>{EncodedStringChange()});
+    function EncodedStringChange(){
+        try {
+            // console.log("EncodedStringChange()")
+            let tuple = Decode(document.querySelector("#encoded").value);
+            document.querySelector("#explict").value = tuple[0];
+            document.querySelector("#implict").value = tuple[1];
+        } catch (error) {
+            
+        }
+    }
+
+
+    // -----( Encode & Decode )-----------------------------------------------------------------
+    // Encode method
+    // "explict" string for the string which will be explict in the encoded string.
+    // "implict" string for the string which will be implict in the encoded string.
+    function Encode(explict, implict) {
+        var implict = ImplictMethod(implict);
+
+        // implictString + explictString ====> encodedString
+        var encodedString = Insert(explict, 0, implict);
+
+        return encodedString;
+    }
+
+    // implictMethod Method
+    // It will make the string into implict.
+    function ImplictMethod(implict) {
+        // debugger;
+        var implictArray = Array.from(implict); // Some unicode character has 2 width, for this, used Array.from()
+
+        var binarifyArray = implictArray.map((character) => {
+            return character.codePointAt(0)    // change the character into unicode
+                .toString(2)
+        });   // change the character into binarify
+
+        // I plan to use zero-width joiner (u+200d) to become the '1', and the zero-width non-joiner (u+200c) to become '0'.
+        // The zero-width space (u+200b) will split the string into character.
+        var implictString = binarifyArray.map((character) => {
+            return (Array.from(character).map(bit => bit === '1' ? '‍' : '‌')
+                .join(''))
+        }).join('​')
+
+        // Use the three zero-width space (u+200b) to be the symbol which mean the implict string end.
+        implictString = implictString + '​' + '​' + '​';
+
+        return implictString;
+    }
+
+
+
+    // Decode method
+    // will return a tuple (explict, implict)
+    function Decode(encoded) {
+        // Search the explict part.
+        var encodedArray = Array.from(encoded);
+        var index = 0;
+        for (let i = 0; i < encoded.length; i++) {
+            if (encoded[i] === '​') {
+                if (encoded[i - 1] === '​' && encoded[i + 1] === '​') {
+                    index = i;
+                    break;
+                }
+            }
+        }
+
+        var implict = encoded.slice(1, index - 1);  // implict part in the encoded string.
+        
+        var implictString = ExplictMethod(implict); // implict part but decoded.
+
+        var explict = encoded[0] + encoded.slice(index + 2, encoded.length);    // the explict part without implict part.
+
+        return [explict, implictString];
+    }
+
+    // Explict method
+    // Made the encode implict string into explict stirng.
+    // In the origin string, it will be called "implict".
+    function ExplictMethod(explict) {
+        // debugger;
+        var explictArray = explict.split('​');  // splict the string binarify into character binarify list.
+        var binarify = explictArray.map((character) => {
+            return Array.from(character).map(bit => bit === '‍' ? '1' : '0')
+                .join('');
+        })  // Make the zero-width character into binarify which is unicode.
+        var explictString = binarify.map(bit => String.fromCodePoint(parseInt(bit, 2)))
+            .join('');
+
+        return explictString;
+
+    }
+
+    // Insert string with index behind
+    function Insert(string, index, insertString) {
+        for (let i = 0; i < string.length; i++) {
+            if (i === index) {
+                let front = string.slice(0, i + 1);
+                let behind = string.slice(i + 1, string.length);
+
+                var ret = front + insertString + behind;
+            }
+        }
+        return ret;
+    }
+</script>
